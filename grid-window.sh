@@ -1,32 +1,35 @@
 #!/bin/bash -eu
 
 #BEGIN
-# usage: window-handler.sh [left|right|center]
+# usage: grid-window.sh [left|right|center]
 #
 #   a window managing script like `Grid` plugin in compiz.
 #
 #END
 
 # settings
-VERTICAL_GRID_NUM=3
 HORIZONTAL_GRID_NUM=6
-DEBUG=true
-
+HORIZONTAL_GRID_MIN_NUM=2
+HORIZONTAL_GRID_MIN_NUM=6
 XDOTOOL="xdotool"
 WMCTRL="wmctrl"
+DEBUG=true
+set -x # verbose output
 
-CURRENT_DESKTOP_NUM=
+# vals
 DESKTOP_WIDTH=
 DESKTOP_HEIGHT=
-ACTIVE_WINDOW_WIDTH=
-ACTIVE_WINDOW_HIGHT=
+CURRENT_WINDOW_WIDTH=
+CURRENT_WINDOW_HEIGHT=
+CURRENT_WINDOW_X=
+CURRENT_WINDOW_Y=
 
 main() {
+    #prepare
     get_desktop_size
-    # get_active_window_geometry
-    # resize '100%' '100%'
-    # get_active_window_geometry
-    # resize '60%' '100%'
+    get_current_window_geometry
+
+
 }
 
 help(){
@@ -45,49 +48,46 @@ e(){
     p "ERROR: ${@}" >&2
 }
 
-get_active_desktop(){
-    CURRENT_DESKTOP_NUM="`"$XDOTOOL" get_desktop`"
-}
-
 get_desktop_size(){
-    get_desktop_size_with_wmctrl || get_desktop_size_with_xdotool
+    eval "`\"$XDOTOOL\" search --maxdepth 0 \"\" getwindowgeometry --shell 2>/dev/null`"
+    DESKTOP_WIDTH=$WIDTH
+    DESKTOP_HEIGHT=$HEIGHT
+    unset WIDTH HEIGHT X Y
+
+    assert_empty "$DESKTOP_WIDTH" "$DESKTOP_HEIGHT"
+    d "$FUNCNAME: ${DESKTOP_WIDTH}x${DESKTOP_HEIGHT}"
 }
 
-get_desktop_size_with_wmctrl(){
-    get_active_desktop
-   local dsize="`"$WMCTRL" -d | grep "^$CURRENT_DESKTOP_NUM" |\
-                  sed --quiet 's/.* \([0-9]\+x[0-9]\+\) .*/\1/p'`"
-
-   [ -z "$dsize" ] && d "cannot get desktop size with wmctrl" && return 1
-
-   DESKTOP_WIDTH="`echo $dsize | cut -dx -f1`"
-   DESKTOP_HEIGHT="`echo $dsize | cut -dx -f2`"
-
-   d "$FUNCNAME: width=${DESKTOP_WIDTH}, height=${DESKTOP_HEIGHT}"
-}
-
-get_desktop_size_with_xdotool(){
-    get_current_window_size
-    resize '100%' '100%'
+get_current_window_geometry(){
     get_active_window_geometry
-}
+    CURRENT_WINDOW_WIDTH=$WIDTH
+    CURRENT_WINDOW_HEIGHT=$HEIGHT
+    CURRENT_WINDOW_X=$X
+    CURRENT_WINDOW_Y=$Y
+    unset WIDTH HEIGHT X Y
 
-get_current_window_size(){
-    get_active_window_geometry
-    ACTIVE_WINDOW_WIDTH=$WIDTH
-    ACTIVE_WINDOW_HIGHT=$HIGHT
+    assert_empty "$CURRENT_WINDOW_WIDTH" "$CURRENT_WINDOW_HEIGHT" \
+        "$CURRENT_WINDOW_X" "$CURRENT_WINDOW_Y"
+    d "$FUNCNAME: ${CURRENT_WINDOW_WIDTH}x${CURRENT_WINDOW_HEIGHT}+\
+${CURRENT_WINDOW_X}+${CURRENT_WINDOW_Y}"
 }
 
 get_active_window_geometry(){
     eval `"$XDOTOOL" getactivewindow getwindowgeometry --shell`
-    d "active window geometry: ${WIDTH}x${HEIGHT}+${X}+${Y}"
+    d "$FUNCNAME: ${WIDTH}x${HEIGHT}+${X}+${Y}"
 }
 
 resize(){
     "$XDOTOOL" getactivewindow windowsize "$1" "$2"
 }
 
-$DEBUG && set -x
+assert_empty(){
+    for str in "$@"
+    do
+        [[ -z "$str" ]] && return 1
+    done
+    return 0
+}
 
 if [[ $# -eq 0 ]]
 then
