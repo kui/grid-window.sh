@@ -1,5 +1,5 @@
 usage: grid-window.sh [left|right|center]
 
-  A grid window managing script like `Grid` plugin in compiz.
+  Grid window managing script like `Grid` plugin in compiz.
   Use with xmodmap or something keyboard base louncher.
 
