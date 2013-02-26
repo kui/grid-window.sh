@@ -1,4 +1,5 @@
 #!/bin/bash -eu
+# -*- coding:utf-8; mode:sh; -*-
 
 #BEGIN
 # usage: grid-window.sh [left|right|center]
