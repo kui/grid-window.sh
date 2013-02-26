@@ -11,13 +11,12 @@
 HORIZONTAL_GRID_NUM=6
 HORIZONTAL_GRID_MIN_NUM=2
 HORIZONTAL_GRID_MAX_NUM=6
-XDOTOOL="xdotool"
-WMCTRL="wmctrl"
+XDOTOOL='xdotool'
+XDOTOOL_TIMEOUT='0.3'
 DEBUG=true
-set -x # verbose output
+set -x # verbose output flag
 
 # vals
-DIRECTION=
 DESKTOP_WIDTH=
 DESKTOP_HEIGHT=
 CURRENT_WINDOW_WIDTH=
@@ -28,16 +27,27 @@ NEXT_WINDOW_WIDTH=
 NEXT_WINDOW_HEIGHT=
 NEXT_WINDOW_X=
 NEXT_WINDOW_Y=
+DIRECTION=
+GRID_INTERVAL=
 
 main() {
     #prepare
     DIRECTION=$1
     get_desktop_size
+    get_grid_interval
     get_current_window_geometry
-    get_next_window_geometry
 
-    apply_next_window_geometry $NEXT_WINDOW_WIDTH $NEXT_WINDOW_HEIGHT \
-        $NEXT_WINDOW_X $NEXT_WINDOW_Y
+    # resize and move
+    get_next_window_geometry
+    apply_next_window_geometry
+    update_applied_next_window_geometry
+
+    # back to min grid size, when you cannot apply the next window geometry
+    if is_not_move && is_not_resized && is_max_grid_size
+    then
+        get_min_grid_window_geometry
+        apply_min_grid_window_geomery
+    fi
 }
 
 help(){
@@ -52,6 +62,9 @@ p(){
 d(){
     $DEBUG && p "DEBUG: ${@}"
 }
+w(){
+    p "WARN: ${@}"
+}
 e(){
     p "ERROR: ${@}" >&2
 }
@@ -65,6 +78,10 @@ get_desktop_size(){
 
     assert_empty "$DESKTOP_WIDTH" "$DESKTOP_HEIGHT"
     d "$FUNCNAME: ${DESKTOP_WIDTH}x${DESKTOP_HEIGHT}"
+}
+
+get_grid_interval(){
+    GRID_INTERVAL=$((DESKTOP_WIDTH/HORIZONTAL_GRID_NUM))
 }
 
 get_current_window_geometry(){
@@ -83,7 +100,6 @@ ${CURRENT_WINDOW_X}+${CURRENT_WINDOW_Y}"
 
 get_active_window_geometry(){
     eval `"$XDOTOOL" getactivewindow getwindowgeometry --shell`
-    d "$FUNCNAME: ${WIDTH}x${HEIGHT}+${X}+${Y}"
 }
 
 get_next_window_geometry(){
@@ -98,19 +114,13 @@ ${NEXT_WINDOW_X}+${NEXT_WINDOW_Y}"
 }
 
 get_next_window_width(){
-    local grid_interval=$((DESKTOP_WIDTH/HORIZONTAL_GRID_NUM))
-    local next_width_threshold=$((CURRENT_WINDOW_WIDTH + grid_interval / 2))
+    local next_width_threshold=$((CURRENT_WINDOW_WIDTH + GRID_INTERVAL / 2))
 
-    NEXT_WINDOW_WIDTH=$((grid_interval * HORIZONTAL_GRID_MIN_NUM))
+    NEXT_WINDOW_WIDTH=$((GRID_INTERVAL * HORIZONTAL_GRID_MIN_NUM))
     while [[ $NEXT_WINDOW_WIDTH -lt $next_width_threshold ]] \
-          && [[ $NEXT_WINDOW_WIDTH -lt $DESKTOP_WIDTH ]]
-    do NEXT_WINDOW_WIDTH=$((NEXT_WINDOW_WIDTH + grid_interval))
+        && [[ $NEXT_WINDOW_WIDTH -lt $DESKTOP_WIDTH ]]
+    do NEXT_WINDOW_WIDTH=$((NEXT_WINDOW_WIDTH + GRID_INTERVAL))
     done
-
-    # back to min grid
-    # if [[ $NEXT_WINDOW_WIDTH -ge $DESKTOP_WIDTH ]]
-    # then NEXT_WINDOW_WIDTH=$((grid_interval * HORIZONTAL_GRID_MIN_NUM))
-    # fi
 
     d "$FUNCNAME: NEXT_WINDOW_WIDTH=$NEXT_WINDOW_WIDTH"
 }
@@ -132,7 +142,58 @@ get_next_window_y(){
 }
 
 apply_next_window_geometry(){
-    "$XDOTOOL" getactivewindow windowsize $1 $2 windowmove $3 $4
+    "$XDOTOOL" getactivewindow \
+        windowmove $NEXT_WINDOW_X $NEXT_WINDOW_Y \
+        windowsize $NEXT_WINDOW_WIDTH $NEXT_WINDOW_HEIGHT
+}
+
+update_applied_next_window_geometry(){
+    get_active_window_geometry
+    NEXT_WINDOW_WIDTH=$WIDTH
+    NEXT_WINDOW_HEIGHT=$HEIGHT
+    NEXT_WINDOW_X=$X
+    NEXT_WINDOW_Y=$Y
+    unset WIDTH HEIGHT X Y
+
+    assert_empty "$NEXT_WINDOW_WIDTH" "$NEXT_WINDOW_HEIGHT" \
+        "$NEXT_WINDOW_X" "$NEXT_WINDOW_Y"
+    d "$FUNCNAME: ${NEXT_WINDOW_WIDTH}x${NEXT_WINDOW_HEIGHT}+\
+${NEXT_WINDOW_X}+${NEXT_WINDOW_Y}"
+}
+
+is_not_move(){
+    [[ $NEXT_WINDOW_X -eq $CURRENT_WINDOW_X ]] \
+        && [[ $NEXT_WINDOW_Y -eq $CURRENT_WINDOW_Y ]]
+}
+
+is_not_resized(){
+    [[ $NEXT_WINDOW_WIDTH -eq $CURRENT_WINDOW_WIDTH ]] \
+        && [[ $NEXT_WINDOW_HEIGHT -eq $CURRENT_WINDOW_HEIGHT ]]
+}
+
+is_max_grid_size(){
+    [[ $((NEXT_WINDOW_WIDTH + (GRID_INTERVAL / 2))) -ge $DESKTOP_WIDTH ]]
+}
+
+get_min_grid_window_geometry(){
+    get_min_grid_window_width
+    get_min_grid_window_height
+    get_next_window_x
+    get_next_window_y
+}
+
+get_min_grid_window_width(){
+    NEXT_WINDOW_WIDTH=$((GRID_INTERVAL * HORIZONTAL_GRID_MIN_NUM))
+}
+
+get_min_grid_window_height(){
+    NEXT_WINDOW_HEIGHT=$DESKTOP_HEIGHT
+}
+
+apply_min_grid_window_geomery(){
+    "$XDOTOOL" getactivewindow \
+        windowsize $NEXT_WINDOW_WIDTH $NEXT_WINDOW_HEIGHT \
+        windowmove $NEXT_WINDOW_X $NEXT_WINDOW_Y
 }
 
 assert_empty(){
