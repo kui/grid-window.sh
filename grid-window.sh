@@ -3,7 +3,8 @@
 #BEGIN
 # usage: grid-window.sh [left|right|center]
 #
-#   a window managing script like `Grid` plugin in compiz.
+#   A grid window managing script like `Grid` plugin in compiz.
+#   Use with xmodmap or something keyboard base louncher.
 #
 #END
 
@@ -14,7 +15,7 @@ HORIZONTAL_GRID_MAX_NUM=6
 XDOTOOL='xdotool'
 XDOTOOL_TIMEOUT='0.3'
 DEBUG=true
-set -x # verbose output flag
+# set -x # verbose output flag
 
 # vals
 DESKTOP_WIDTH=
@@ -45,6 +46,7 @@ main() {
     # back to min grid size, when you cannot apply the next window geometry
     if is_not_move && is_not_resized && is_max_grid_size
     then
+        d "back to min grid size"
         get_min_grid_window_geometry
         apply_min_grid_window_geomery
     fi
@@ -210,7 +212,7 @@ assert_empty(){
 if [[ $# -eq 0 ]]
 then
     help
-    exit 1
+    exit 0
 fi
 
 case $1 in
