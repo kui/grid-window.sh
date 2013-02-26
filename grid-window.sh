@@ -142,9 +142,13 @@ get_next_window_y(){
 }
 
 apply_next_window_geometry(){
-    "$XDOTOOL" getactivewindow \
+    # TODO do not use `timeout`
+    #      use busy loop to wait until window geometry is changed
+    if ! timeout $XDOTOOL_TIMEOUT "$XDOTOOL" getactivewindow \
         windowmove $NEXT_WINDOW_X $NEXT_WINDOW_Y \
-        windowsize $NEXT_WINDOW_WIDTH $NEXT_WINDOW_HEIGHT
+        windowsize --sync $NEXT_WINDOW_WIDTH $NEXT_WINDOW_HEIGHT
+    then w "$FUNCNAME: operation timeout"
+    fi
 }
 
 update_applied_next_window_geometry(){
