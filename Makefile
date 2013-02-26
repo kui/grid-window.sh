@@ -7,7 +7,7 @@ git: TODO README
 	git commit -m'update by Makefile'
 
 TODO: $(TARGET_SCRIPT)
-	grep -E 'TODO' $(TARGET_SCRIPT) > TODO
+	grep -E -n 'TODO' $(TARGET_SCRIPT) > TODO
 	git add TODO
 
 README: $(TARGET_SCRIPT)
