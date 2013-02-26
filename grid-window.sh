@@ -10,26 +10,34 @@
 # settings
 HORIZONTAL_GRID_NUM=6
 HORIZONTAL_GRID_MIN_NUM=2
-HORIZONTAL_GRID_MIN_NUM=6
+HORIZONTAL_GRID_MAX_NUM=6
 XDOTOOL="xdotool"
 WMCTRL="wmctrl"
 DEBUG=true
 set -x # verbose output
 
 # vals
+DIRECTION=
 DESKTOP_WIDTH=
 DESKTOP_HEIGHT=
 CURRENT_WINDOW_WIDTH=
 CURRENT_WINDOW_HEIGHT=
 CURRENT_WINDOW_X=
 CURRENT_WINDOW_Y=
+NEXT_WINDOW_WIDTH=
+NEXT_WINDOW_HEIGHT=
+NEXT_WINDOW_X=
+NEXT_WINDOW_Y=
 
 main() {
     #prepare
+    DIRECTION=$1
     get_desktop_size
     get_current_window_geometry
+    get_next_window_geometry
 
-
+    apply_next_window_geometry $NEXT_WINDOW_WIDTH $NEXT_WINDOW_HEIGHT \
+        $NEXT_WINDOW_X $NEXT_WINDOW_Y
 }
 
 help(){
@@ -49,7 +57,8 @@ e(){
 }
 
 get_desktop_size(){
-    eval "`\"$XDOTOOL\" search --maxdepth 0 \"\" getwindowgeometry --shell 2>/dev/null`"
+    eval "`\"$XDOTOOL\" search --maxdepth 0 \"\" \
+                        getwindowgeometry --shell 2>/dev/null`"
     DESKTOP_WIDTH=$WIDTH
     DESKTOP_HEIGHT=$HEIGHT
     unset WIDTH HEIGHT X Y
@@ -77,14 +86,58 @@ get_active_window_geometry(){
     d "$FUNCNAME: ${WIDTH}x${HEIGHT}+${X}+${Y}"
 }
 
-resize(){
-    "$XDOTOOL" getactivewindow windowsize "$1" "$2"
+get_next_window_geometry(){
+    get_next_window_width
+    get_next_window_height
+    get_next_window_x
+    get_next_window_y
+    assert_empty "$NEXT_WINDOW_WIDTH" "$NEXT_WINDOW_HEIGHT" \
+        "$NEXT_WINDOW_X" "$NEXT_WINDOW_Y"
+    d "$FUNCNAME: ${NEXT_WINDOW_WIDTH}x${NEXT_WINDOW_HEIGHT}+\
+${NEXT_WINDOW_X}+${NEXT_WINDOW_Y}"
+}
+
+get_next_window_width(){
+    local grid_interval=$((DESKTOP_WIDTH/HORIZONTAL_GRID_NUM))
+    local next_width_threshold=$((CURRENT_WINDOW_WIDTH + grid_interval / 2))
+
+    NEXT_WINDOW_WIDTH=$((grid_interval * HORIZONTAL_GRID_MIN_NUM))
+    while [[ $NEXT_WINDOW_WIDTH -lt $next_width_threshold ]] \
+          && [[ $NEXT_WINDOW_WIDTH -lt $DESKTOP_WIDTH ]]
+    do NEXT_WINDOW_WIDTH=$((NEXT_WINDOW_WIDTH + grid_interval))
+    done
+
+    # back to min grid
+    # if [[ $NEXT_WINDOW_WIDTH -ge $DESKTOP_WIDTH ]]
+    # then NEXT_WINDOW_WIDTH=$((grid_interval * HORIZONTAL_GRID_MIN_NUM))
+    # fi
+
+    d "$FUNCNAME: NEXT_WINDOW_WIDTH=$NEXT_WINDOW_WIDTH"
+}
+
+get_next_window_height(){
+    NEXT_WINDOW_HEIGHT=$DESKTOP_HEIGHT
+}
+
+get_next_window_x(){
+    case $DIRECTION in
+        left)   NEXT_WINDOW_X=0 ;;
+        right)  NEXT_WINDOW_X=$((DESKTOP_WIDTH - NEXT_WINDOW_WIDTH)) ;;
+        center) NEXT_WINDOW_X=$(((DESKTOP_WIDTH - NEXT_WINDOW_WIDTH) / 2)) ;;
+    esac
+}
+
+get_next_window_y(){
+    NEXT_WINDOW_Y=0
+}
+
+apply_next_window_geometry(){
+    "$XDOTOOL" getactivewindow windowsize $1 $2 windowmove $3 $4
 }
 
 assert_empty(){
     for str in "$@"
-    do
-        [[ -z "$str" ]] && return 1
+    do [[ -z "$str" ]] && return 1
     done
     return 0
 }
@@ -98,6 +151,6 @@ fi
 case $1 in
     left | right | center ) main $1 ;;
     * )
-        e "unknown sub-command"
+        e "unknown direction: $1"
         help ;;
 esac
