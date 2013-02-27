@@ -10,6 +10,7 @@
 #END
 
 # settings
+USER_CONFIG_FILE=~/.grid-window.sh
 HORIZONTAL_GRID_NUM=6
 HORIZONTAL_GRID_MIN_NUM=2
 HORIZONTAL_GRID_MAX_NUM=6
@@ -34,6 +35,7 @@ GRID_INTERVAL=
 
 main() {
     #prepare
+    load_user_config
     DIRECTION=$1
     get_desktop_size
     get_grid_interval
@@ -70,6 +72,16 @@ w(){
 }
 e(){
     p "ERROR: ${@}" >&2
+}
+
+load_user_config(){
+    if [[ -f "$USER_CONFIG_FILE" ]]
+    then
+        d "$FUNCNAME: load $USER_CONFIG_FILE"
+        source "$USER_CONFIG_FILE"
+    else
+        d "$FUNCNAME: not found $USER_CONFIG_FILE"
+    fi
 }
 
 get_desktop_size(){
