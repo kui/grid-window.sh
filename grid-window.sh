@@ -65,7 +65,7 @@ p(){
     echo $@
 }
 d(){
-    $DEBUG && p "DEBUG: ${@}"
+    ( $DEBUG && p "DEBUG: ${@}" ) || return 0
 }
 w(){
     p "WARN: ${@}"
