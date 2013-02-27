@@ -129,11 +129,12 @@ ${NEXT_WINDOW_X}+${NEXT_WINDOW_Y}"
 }
 
 get_next_window_width(){
-    local next_width_threshold=$((CURRENT_WINDOW_WIDTH + GRID_INTERVAL / 2))
+    local next_width_threshold=$((CURRENT_WINDOW_WIDTH + GRID_INTERVAL / 3))
 
     NEXT_WINDOW_WIDTH=$((GRID_INTERVAL * HORIZONTAL_GRID_MIN_NUM))
     while [[ $NEXT_WINDOW_WIDTH -lt $next_width_threshold ]] \
-        && [[ $NEXT_WINDOW_WIDTH -lt $DESKTOP_WIDTH ]]
+        && [[ $NEXT_WINDOW_WIDTH \
+              -lt $((GRID_INTERVAL * HORIZONTAL_GRID_MAX_NUM)) ]]
     do NEXT_WINDOW_WIDTH=$((NEXT_WINDOW_WIDTH + GRID_INTERVAL))
     done
 
@@ -189,7 +190,8 @@ is_not_resized(){
 }
 
 is_max_grid_size(){
-    [[ $((NEXT_WINDOW_WIDTH + (GRID_INTERVAL / 2))) -ge $DESKTOP_WIDTH ]]
+    [[ $((NEXT_WINDOW_WIDTH + (GRID_INTERVAL / 3))) \
+        -ge $((GRID_INTERVAL * HORIZONTAL_GRID_MAX_NUM)) ]]
 }
 
 get_min_grid_window_geometry(){
